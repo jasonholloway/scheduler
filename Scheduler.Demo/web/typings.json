@@ -1,0 +1,11 @@
+{
+  "name": "myday.scheduler.demo.web",
+  "dependencies": {},
+  "globalDependencies": {
+    "react": "registry:dt/react#0.14.0+20161024223416",
+    "react-dom": "registry:dt/react-dom#0.14.0+20160412154040",
+    "rx": "registry:dt/rx#0.0.0+20160317120654",
+    "signalr": "registry:dt/signalr#2.2.0+20160509082439",
+    "wu": "registry:dt/wu#2.1.0+20160622201553"
+  }
+}

@@ -1,0 +1,398 @@
+﻿
+
+            //inst
+
+            //we need to know how many jobs we have
+            //this can be gathered, by some registration/degistration routine
+
+            //jobs only exist when they are scheduled
+            //a job at some preceding stage affects nothing.
+            //So, taking the scheduled count seems reasonable.
+
+            //At the point of each scheduling, we know how many are scheduled in front of us, across what period.
+            //The individual weighting of these we can't know, but we can expect their integral area to be such and such.
+            //As individual events will have different periods, shorter follow-on repetitions will not show up in our
+            //overview: only the next of each job will be there.
+
+            //As long as at every juncture we do our best to be fair, unless the system escapes us (which it shouldn't,
+            //as it takes no action without our momentary oversight), we should tend towards the optimum.
+
+            //We know how many jobs are scheduled, over what range, and so, in placing a new job, 
+            //BUT NO! we don't how many jobs are scheduled over what a range, as they are plotted only to their next iteration.
+
+            //If, instead, we had a set of jobs and their periods, we could somehow work out the mass, and therefore the space available to us.
+            //The periods of jobs should be relative to each other, not absolute, as we will also want to modulate the overall speed of the mechanism,
+            //so as to control jobs already placed.
+
+            //Actual timings will be jittered randomly, so that each job-call actually has a flat rectangle of constant probability.
+            //As jobs are added, these layers are stacked, until we reach the roof. The heights of these rectangles are relative, not absolute.
+            //This is also to say: their heights are not determinate, but calculated from elsewhere: they are downstream values.
+            //The height of a rectangle of probability is only knowable, is only determined, when we determine the parameters of time and length and ceiling-size.
+
+            //At each juncture, then, we recalculate the layer cake, and derive from it our wished-for job-specific delay.
+            //The thought must be that this calculation will be large, as each layer is relative to the total of the whole.
+            //Though often there will have been no change to the system - that is, no job will have been added or removed, 
+            //and no weightings will have been modulated(?) - and so we will be able to simply and quickly reschedule.
+
+            //The other strategy open to us is modulation of time without recalculating individuals. Compressing time will make all run faster absolutely.
+            //Slowing time will create space for more calls in the same duration. This allows us to cope with new jobs being added and removed, though we
+            //now need to know the requisite change to time to make, which will be determined by the marginal weight of the new addition.
+            //But this marginal weight is not absolute.
+
+            //Every job is primitively scheduled at one invocation per period. This is true even for millions of jobs. With a million jobs, our period will be very long.
+            //A single job's period will be very short, as it will be possible to repeat it very quickly and often in absolute time.
+
+            //So every coequal job has a rate of once per period. What about unequal ones? With each modulation of weighting, we can either arrange all others so that the
+            //overall weight is the same as though all were at the standard rate, or we can track the overall weight and rearrange at the widest possible level.
+
+            //Every modulation of weight is an increment, which can be serialized to a queue, and applied to our running total weight.
+            //Given an overall weight, we can adjust the absolute meaning of a period.
+
+            //Individual modulations will only be recalculated at the time of rescheduling. So we can always expect weightings other than our own
+            //to remain static. An actual rescheduling without modulation is in fact no change - it is just a reaffirmation of the status quo.
+            //The only changes are modulations of weightings, and additions/removals. 
+
+            //We can think of additions and removals as themselves being modulations. Primitively all jobs implicitly exist with a weighting of zero.
+            //This airy lack of weight allows us to discount them. An addition is just the sudden incrementing of weight and with it, counting. 
+            //So, all changes are modulations of individual weight, affecting the overall toatl weight, and with it the scaling of time to bring the
+            //overall probability rectangle level with the optimal ceiling.
+
+            //Simplification: a rate of one-per-period, which is the natural rate, translates to an optimal overall throughput.
+            //So a single job at the primitve rate will be executed so often as to realise the optimum, which is quite a thrashing.
+            //A million jobs at the natural rate will realise the same. Information is being pushed outwards, leaving us tautologies
+            //in a simple system. 
+
+            //But as weights are added, the overall rate becomes outsized, and the whole must be constrained. The individual job knows
+            //nothing of its ideal rate, it only knows its relative weight - which, in terms of its own system, is absolute.
+            //That is, ideal rates must be calculated. In relating them tautologically to overall weight, we situate the calculation of
+            //rate one small hop away. We know our weight, we know the overall weight, therefore we can find our ideal rate.
+            //But our ideal rate in these terms *is* our original self-defined weight. The tautology says: scaling spans easily between
+            //these terms. 
+
+            //A weight increases; we adjust the overall weight; the overall weight affects the rate of time, from that moment onwards; agnostically
+            //of the rate of time, we schedule the job anew, in virtual ticks, according to its rate, which is directly related to its weight
+            //
+            //A virtual tick is a set subdivision of a period - we should make it a power of two. 65536 ticks per period. 
+            //
+            //The driver informs us of the new time - in 'real' ticks - we then progress the index by the correct number of virtual ticks.
+            //So - virtual ticks are determined by real time.
+            //
+            //We are driven forwards 1000 real ticks. We continue as before, unless a job is detected, in which case we inevitably have to
+            //reschedule it. This is done for us by the mechanism of the base class, and we don't have to worry ourselves about it...
+            //
+            //But rescheduling is done by us at our level (except that the scaling of ticks implicates the lower level also - we need to
+            //expose some scaling factor from below). On each scheduling or change, we modulate params.
+            //
+            //We are driven 1000 real ticks, which we multiply by a factor to get our virtual ticks. On each change, we recalculate the
+            //speed factor. We know the weight change, and apply the increment to the total weight. 100 jobs at a normal rate will amount
+            //to 100 units, two jobs to only two units. To optimize our overall throughput, we must linearly scale the speed factor to this
+            //weight. 
+
+            //An individual job of normal weight will always repeat once per natural period.
+            //A job of greater weight will have a period less than the natural period.
+            //The period of the individual job will be linearly scaled by the weight of that job.
+
+            //The natural period relates to the set period of the whole; the period of the whole, contextualized properly, is not
+            //set at all except within its own internal language, but is a function of overall weight. 
+
+            //So, adding an individual weight will add to the overall weight, and the progress of the whole becomes slower to limit throughput.
+            //But the individual weight will also decrease the scheduling period of that job in compensation, in terms of virtual ticks.
+            //The real period of the job is not known to it or its immediate mechanism: that's a matter for the outer driver and its optimums.
+
+            //Overall parameters can be modulated on each turn, and within each turn as each hit job is processed.
+            //But individual parameters - that is, weightings - can only be applied when that job is rescheduled.
+            //This could be bad when periods are long. A change might take a long time to take effect...
+            //
+
+
+            //There is a problem in all of this loveliness.
+            //Ad-hoc requests will be received. When an ad hoc request is received, we should - unless data is particularly fresh
+            //- retrigger straight away. Perfectly, we would then reschedule any upcoming appointments to maintain the periodicity 
+            //of our particular job. So that's it, potentially - if an ad hoc request is accepted, then we must find the next and
+            //kill it in favour of a newly-scheduled version. But such a searching is costly. We can't reasonably iterate through
+            //a thousand or so jobs on each ad hoc request - even if half of the incoming requests will be filtered out in favour
+            //of serving cached data.
+
+            //Alternatively we could accumulate 'ignore' tokens, at greater complexity and with no great savings.
+
+            //Or, as each job will have a stateful object tracking and modulating it, we could set an 'ignore' counter on this
+            //object, while scheduling a new event further down the line. Then when we meet the next event, we will let it pass and
+            //await the follow up instead. Is it possible that the first-encountered event will in fact be our rescheduled event
+            //at its proper period? For this to be so the job's period would have to shorten at the same time as the ad hoc request
+            //caused a recalculation, sufficiently so that the previous follow-up was now beaten by the improved one. There are possibilities
+            //here - we need to either ignore or remove an already-scheduled instance.
+            
+            //The above would also skew the number of jobs, if derived from the queue count directly. The outer scheduler has a prime
+            //opportunity to track the overall job count, as with each modulation changes will be emitted to it.
+            //As well as the modulation in weight, some channel of addition/removal needs to exist and be aggregated.
+            
+            //but reactive binding is of course not performant. The aggregation will be derived from direct function calls.
+
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            //
+            //
+            //
+            //
+            //
+            //
+            //
+            //
+
+
+			
+        //BEWARE WEIGHT BECOMING ZERO! If weight is zero, then we 
+        //At each instance, we can interpolate the average job weight since the last instance.
+        //Though this should really be the province of the outer calback... don't pile too much cleverness on here.
+        //
+
+
+        //The problem of a zero weighting is that it translates to an infinite period without killing the job.
+        //It properly won't be rescheduled ever to re-occur, but as such, we will never get the chance to re-enliven it,
+        //even if its weighting soon changed, as we would never have an instance in which to recalculate it. A single zero
+        //at an opportune moment and the job will be in limbo for ever, with no hope of resuscitation. We either explicitly kill
+        //it at this point, but then we need some way of explicitly restarting it later from outside, meaning that management of
+        //job state is pushed outwards; or (and this is surely the more productive direction) we process changes more frequently
+        //than just when instances are met.
+
+        //On every set duration of real ticks, then, we would have to relculate the weight of each job. This is a large and inefficient
+        //overhead, though it would be consistently spread across the schedulers operation. Or - some outer process would enqueue updates,
+        //at whatever rate it saw fit to. Our scheduler would process these serialized modulation events in parallel to the enqueued instances.
+
+        //Modulations would be queued twice, first to the concurrent outer queue in a simple append. Items will then be popped from this queue
+        //by the scheduler and put in time order in a second queue. This queue will then be peeked into to process modulations in order.
+        
+
+
+		
+            //When a mod is received, there should be some mechanism of discounting the already-scheduled
+            //This might mean a lot of inserts, however, as new instances are created for evey mod.
+            //Yet this is how it has to be...
+            //  otherwise: > existing inserts should be shuffled around, at the cost of complexity
+            //             > or, changes will only be recalculated when the next instance hits. 
+            //               but - this causes all sorts of trouble with low weights - epitomized by weight = zero
+
+            //So, a mod is processed at its proper time, and a new instance should be placed, at the same time as any 
+            //existing instance is discounted. Every job will have to have state - at the bare minimum a weight. It should
+            //also have a next invocation time. Dequeued instances should only be executed if their time matches that
+            //stated in job state. In the case of zero? it won't matter, as the job will never get executed, and the state never checked.
+            
+            //And ad hoc calls? The above mechanism will allow jobs to be rescheduled to match the new way of things.
+            //The ad hoc calls itself needs to be throttled somehow - but by something elsewhere. Otherwise a single repeated consumer
+            //could ruin updates for everyone else.
+
+            //SO - TESTING
+            //The simplest setup would involve minimal modulations - though some have to be announced at the beginning.
+            //This most simple setup would then test the initialisation of jobs when their weight goes positive. 
+            //The most simple would see a single job start, and then run periodically.
+            //We can be sure that the job will begin promptly, and that it will be executed once in its natural period, though
+            //we can't know exactly when - we'd need to progress through one period and detect its call count, easy enough.
+            //
+            //The problem here would be that if only one job were loaded, its period would be very low, as the total weight would
+            //be scaled up to optimise total throughput. With very frequent repetitions, the blockiness of the index will bunch 
+            //multiple invocations into one, and no forward scheduling will be possible, as the same position is executed and then
+            //rescheduled to repeatedly. A vicious loop.
+
+            //To mitigate this, we can enforce per-job constraints also. The overall maximum will be adapted to as best as possible,
+            //but only to the allowed limits of the individual jobs. But we can't evaluate such individual constraints individually,
+            //as they would affect every recalculation of general time. We have to apply this countervailing constraint in general
+            //also.
+
+            //The job total would affect the optimum, and then all jobs would from there be affected in general.
+            //The optimum scales time at each bound. And so the job total will scale time at each bound. But internally,
+            //no change will be evident, and the single job will indeed be triggering incredibly frequently.
+
+            //We would still then face the problem of over-saturating the bit format.
+            //Solution? Doubles rather than integers.
+            //Virtual periods could then be expressed scaled to the full and natural one. 
+
+            //A weight of one would translate to a period of one.
+            //As the overall weight would be very low, time would would be scaled inversely.
+            //Total weight would be one, and our optimum would be 10hz, so virtual time would then progress
+            //so that for every real second, ten virtual periods passed.
+            //
+            //With two jobs, the overall weight would be two, and each obeyed the natural virtual period of one, the overall weight
+            //here would mean that there would be two calls per period. Weight is density per period - that is, overall rate.
+            //Real progress would then be scaled to pass five virtual periods for every real second.
+            //
+            //Could we then bin the weight metaphor? Instead, we'd talk of each job's virtual rate.
+            //
+            //One job would have a virtual rate of one - perfectly natural. But its two siblings would have virtual rates of two.
+            //The overall rate per virtual period would then be these summed - five calls per period.
+            //Our optimum would again be 10hz: progress would then be scaled such that two virtual periods passed per real second.
+            //job#1:2hz, job#2:4hz, job#3:4hz
+            //------------------------------------------------------------------------------------------------
+
+            //SCALING OF THE MAXIMUM TO JOB COUNT:
+            //All jobs being equal, fine. But there's no total protection against unbalanced job rates. 
+            //If one job is executed 4999 times as often as another, this would give a total rate of 5000vhz,
+            //which would then be scaled to the general optimum for two jobs, which would be, say 2hz.
+            //The first job would then execute at very nearly 2hx; the other would be trodden into the ground.
+            //But this could occur even without the scaling of the optimum.
+
+            //The issue with the above is that it's inefficient. The optimum will unnecessarily stifle perfectly good
+            //rates if another is hogging resources, even though there's plenty of throughput to go round. This is because 
+            //the chastisement is applied in general. Individual rates could be ruled to avoid overwhelming, hogging values.
+
+            //The scaling of the optimum would limit proportionally to job count up till a high shelf enforced an overall limit.
+            //-------------------------------------------------------------------------------------------------------------------
+            
+            //I'd still like to fathom some way of enforcing a per-job constraint. The problem is, at the point of scheduling there
+            //no information from the outer world, we are separated from real time in our cushy internal world.
+            //Any limitation will always relate directly to real time, as it does with the general optimum and its relation to
+            //the scaling of progress. We can't modulate individual timings, but only weights - or, rather virtual rates per job.
+            //Well - these are more vulnerable to us in the scheme of things.
+
+            //Given an overall conversion, we know what each individual virtual rate converts to in real terms, and with this we know 
+            //whether an individual job is exceeding its real limit. But here we have a circular relation, for weight contributes to
+            //overall weight, which converts to real individual weight, which in being clipped changes overall weight again, and feeds
+            //back for ever, until no clipping occurs.
+
+            //How would the clipping occur? By the indirection of a modulation event? But by reducing the individual weight, then the overall 
+            //conversion would compensate back again, albeit in general, making all other jobs go faster until we reach an equilibrium.
+            //But if there is only one job? Then it will be decreased in weight, and as it alone will contribute to overall weight, its real rate
+            //will be amplified in exact proportion to its shrinking virtual rate. There would be no escape here, until an exception is thrown.
+
+            //Weight is just a mechanism of passing resources on to other jobs. With a single job it is meaningless.
+            //And with no jobs and no weight? Simple - there'd be no virtual progress.
+
+            //The passing on of weight to other jobs is perfectly reasonable, there's throughput to go round - it'd be a waste
+            //to annihilate it, to throw it away. Better to pass it elsewhere via general scaling.
+            //The problem is in how the change feeds back, and especially in the case of the single job.
+            //The single job will max out. Better then scale the sought maximum.
+
+            //TESTING
+            //without the complication of optimum-scaling, huge throughputs per job are certain. But does this matter? Not really.
+            //
+            //So, our most simple job will notify the scheduler of a single job at virtual rate of one, and then we will weight until
+            //one period has passed. At this point, we can be certain that exactly one call should have been made.
+
+
+
+
+
+			
+        //what if the job count goes down to zero, effectively stopping the mechanism,
+        //but there are still mods enqueued? But the mechanism isn't stopped - its speed will get infinitely great,
+        //and all scheduled mods will be seen to directly. But we can't deal with infinite scaling... time will
+        //quickly run out. Infinite speed truly means an alternative mode kicking in. 
+
+        //And if not an infinite scaling up of zero, then a single job with a very low weighting (it could happen)
+        //would affect us similarly. Two low an overall weight and the rate gets great. A single job would then be repeated
+        //so often as to be ridiculous. We need a per-job optimum, that will only be met if there is headroom for it, and can be exceeded
+        //if job weight is increased.
+
+        //Job weights should be toned down, not amplified. 
+        //One is a good, natural rate. 
+
+        //With three jobs, all on one, their per-job optima will not sum to be greater than the API optimum.
+        //This optimum rate will then be shared equally between them.
+
+        //If two jobs were on 0.1, and one on 1, then the overall rate would be 1.2 per virtual period, and, as the overall optimum
+        //would be 3, progress would be scaled to achieve this, with all jobs' rates more than doubled. The job on one, with its natural
+        //rate, would therefore overshoot by a long way its individual optimum. It would be the victim of the weakness of others.
+        //Others would have fobbed off their own share of the rate onto it, thereby overloading it. The overall optimum trumps the individual
+        //optimum, which is only via a contortion expressed as an optimum in general. 
+
+        //The optimum should really be a personal limiting, enforced at the point of rescheduling - but it can't really be enforced in real
+        //terms here. We can know how the individual weight relates to the overall weight, however. We can know what percentage of the whole
+        //the single job represents. And with this, we can know, under current overall scaling, how fast we expect to repeat in real terms
+        //(though the overall scaling is not constant)
+
+        //There is still the problem of circularity: being too great a proportion of the whole, 
+        //....
+        
+
+		
+        //The scaling of the virtual rate to the real optimum shouldn't be a simple direct amplification to the maximum.
+        //Given a certain overall weight - that is, a certain overall virtual rate - the optimum itself should be scaled
+        //down to fit it. Yet, we also expect the virtual rate to be scaled upwards...
+        //
+        //With an overall virtual rate, we know what real rate this should map to - the scaling rises in a linear ramp up to a high shelf.
+        //The scaling of virtual progress is then a simple function of this. The scaling to the shelf only then kicks in when the virtual
+        //rate is too high. When it is low enough, then we scale not to an arbitrary maximum, but to this proportional ramp.
+
+        //With a weight of zero, we would therefore make no virtual progress. If a mod had been enqueued, we'd therefore be in trouble.
+        //Although - how can a mod be scheduled for the future? They will only be given a time when dequeued into the world of virtual
+        //time. At this point they should be valid as soon as possible. How can we say at what virtual time they will be valid? We can't.
+        //Setting time so haughtily also leads to the strange proposition of scheduling mods into the past, and thereby, if we were being
+        //faithful to our system, changing the various timings of events already passed.
+
+        //Better then to trigger modulations as soon as we can: so, a separate buffer of mods will be flushed on every progression.
+        //This also (unfortunately) simplifies away the fake polymorphism of the instance.
+        //We don't give the outside world oversight of our time - it is our own domain. In return for this privacy, it is our
+        //responsibility to react to outside stimuli, and to represent it internally (rather than expecting outside agents to
+        //cleverly project themselves using either some special knowledge of our domain, or by enforcing a stultifying constraint
+        //of similitude onto us)
+
+        //From the outside, we pipe in modulations that are timeless.
+
+        //when does modulation of overall rate happen? On processing of mod.
+        //which happens as part of incremental progress.
+        //...
+
+
+
+		
+        //We're going to need something akin to garbage collection: otherwise, as rates lower to zero, very distant
+        //instances are to be scattered, that will remain at the far end of the schedule, clogging up attempts to sort
+        //and insert, and taking up more and more memory - a memory leak, in fact.
+        //Every now and again, we'll need to scan the schedule, remove all spent instances, and compress the whole.
+
+
+
+
+		
+            //schedule new job from now at new rate
+            //we need to know the difference left to go before next invocation (stored in JobState)
+            //we scale the distance left to go by the ratio change in the rate, and plot a new instance at a new distance
+            //while changing the next id on the JobState. JobState will therefore store instance id *and* time of next invocation.
+
+            //When going from a rate of zero, or rather when there's no follow-up, then we plot a full span.
+            //Deducting previous progress requires us to know when the previous invocation was, when the next one is,
+            //and how far through the span we are as a proportion of the whole. We then plot the new instance with an offset
+            //so that we are the same proportion through the newly-scaled span.
+
+            //span is inversely related to rate. But from the rate we can know what the span is supposed to be. And if we know
+            //the time of the next invocation, we can then work out how much excess span we have left to traverse. The calc would
+            //be simpler if we just compared against time of last invocation instead. More clear, and we're talking about tiny bits
+            //of data really.
+            
+
+
+		
+        //Mods are to affect currently-scheduled jobs.
+        //They will do this by inserting new jobs, and updating JobState to point to the new one.
+        //The old Instance will be left in place, but it will be ignored when met.
+        //Instead of ignoring based on scheduled time, which may actually be the same under odd conditions,
+        //each instance should instead be given a unique long id.
+
+
+        //On actual rescheduling, little should happen, then. We should know the job's period from the job controller object,
+        //wherever that might be. Job details can't live within the instance itself, as they need to be immediately accessible without
+        //searching for ad hoc requests. This availability requirement also means that we need an index of job objects. Instances
+        //can then refer to the job object directly.
+
+        //Modulations then affect the overall total, and update the per-job weight.
+
+
+		
+        //Question of units to expose...
+        //For ease of understanding, should take DateTime into progress? Though this then implicitly relies on us putting time forward
+        //and not backward. It would lose the nice clarity of the Progress function, which reveals how things work nicely to the consumer.
+        //The problem is, if we're just shunting it forward by arbitrary amounts, how can the jobs themselves ever know their real times?
+        //By consulting the actual clock? Virtual times are useless to the consumer - they just tell us when an event is supposed to have
+        //happened, rather than when it actually does. As such, there's no need to pass this info through.
+
+        //What about logging emitted events? Again, these would be better consulting the actual clock.
+        //And so, no time needs to be comunicated through.
+
+        //sched.ProgressTo(DateTime.Now) would tell the scheduler to advance to the current moment.
+        //An advantage of this would be that the optimum uses familiar units.
+        
+        //Optimum is expressed in calls per period. But which period? Must be real period. So calls per minute? 
+        //The undecidability of this period leads me to wish for it to be left undecided. Progress should be in double increments
+        //of the real period, which is of course set in duration. The optimum will then be calls per real period.
+
+
+
