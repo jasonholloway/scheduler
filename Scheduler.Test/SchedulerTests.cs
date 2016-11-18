@@ -229,6 +229,81 @@ namespace Collabco.Myday.Scheduler
 
 
 
+        //[TestCase(1000, 2, 10, 200, 10, Description = "No limiting, simple - supposedly")]
+        ////[TestCase(11, 2, 5, 200, 10, Description = "Some limiting, not so simple")]
+        ////[TestCase(10, 1, 50, 50, 10, Description = "Very clean limiting - no messy numbers here, should always == 500")]
+        ////[TestCase(1.1, 0.25, 5, 50, 0.5, Description = "And another")]
+        //public void OverallLimit_CanBeModulated(double overallLimit, double optimumPerJob, int jobCount, double totalSpan, double turnSpan) {
+        //    var rand = new Random(TestContext.CurrentContext.Test.FullName.GetHashCode());
+        //    var modsPerTurn = new List<JobMod[]>();
+
+        //    int callCount = 0;
+
+        //    var jobIds = Enumerable.Range(0, jobCount)
+        //                        .Select(_ => Guid.NewGuid())
+        //                        .ToArray();
+
+        //    var sched = new Scheduler(
+        //        rand: rand,
+        //        handler: j => { callCount++; },
+        //        optimum: new Optimum(overallLimit, optimumPerJob));
+
+        //    //drive progress for given totalSpan, in increments of turnSpan
+        //    double remaining = totalSpan;
+
+        //    while(remaining > 0) {
+        //        var span = remaining >= turnSpan ? turnSpan : remaining;
+
+        //        modsPerTurn.Add(
+        //            jobIds.Select(id => {
+        //                var mod = new JobMod(id, span, rand.NextDouble() * 2);
+        //                sched.Notify(new Modulation(new JobKey(id), mod.VirtRate));
+        //                return mod;
+        //            }).ToArray());
+
+        //        sched.Progress(span);
+        //        remaining -= span;
+        //    }
+
+        //    var callsPerJob = new Dictionary<Guid, double>();
+        //    jobIds.ForEach(id => callsPerJob[id] = 0);
+
+        //    foreach(var mods in modsPerTurn) {
+        //        double totalThisTurn = 0;
+
+        //        foreach(var mod in mods) {
+        //            totalThisTurn += mod.Span * (mod.VirtRate * optimumPerJob);
+        //        }
+
+        //        //we now know how much we need to scale each individual job here, to limit the total per this span
+
+        //        var limit = overallLimit * mods[0].Span;
+
+        //        var scale = totalThisTurn > limit
+        //                        ? limit / totalThisTurn
+        //                        : 1D;
+
+        //        foreach(var mod in mods) {
+        //            callsPerJob[mod.JobId] += mod.Span * (mod.VirtRate * optimumPerJob) * scale;
+        //        }
+        //    }
+
+        //    var lowerAcceptableBound = callsPerJob.Values.Select(v => Math.Floor(v)).Sum() * 0.9;   //an annoying, mysterious variance means we have to tolerate being slightly off
+        //    var upperAcceptableBound = callsPerJob.Values.Select(v => Math.Ceiling(v)).Sum() * 1.1; // - don't know why... but results are still reasonable(!)
+
+        //    Assert.That(callCount, Is.InRange(lowerAcceptableBound, upperAcceptableBound));
+        //}
+
+
+
+
+
+
+
+
+
+
+
 
         //[TestCase(1)]
         //[TestCase(2)]

@@ -146,12 +146,21 @@ function newJob$(schedId, jobId, ev$, hub) {
 
 function newScheduler$(schedId, ev$, hub) {
 
-    const addJob = () => {
+    let addJob = () => {
         hub.invoke('updateJob', schedId, Guid.raw(), 1);
     };
 
-    const removeScheduler = () => {
+    let removeScheduler = () => {
         hub.invoke('removeScheduler', schedId);
+    }
+
+    let setLimit = (e) => {
+        let v = e.target.value - 50;
+        let limit = Math.pow(1.05, v) * 3;
+
+        console.log('limit', limit);
+
+        hub.invoke('setOverallLimit', schedId, limit);
     }
 
 
@@ -163,8 +172,9 @@ function newScheduler$(schedId, ev$, hub) {
                 .map(jobEls => ({ 
                                   id: schedId, 
                                   el: <div>
-                                          <button onClick={removeScheduler}>Remove Scheduler</button>                                          
+                                          <button onClick={removeScheduler}>Remove Scheduler</button>      
                                           <JobGraph schedId={schedId} events={ev$}/>
+                                          <input type="range" onChange={setLimit}/>
                                           <button onClick={addJob}>Add Job</button>
                                           <ul>{ jobEls }</ul>
                                       </div> 

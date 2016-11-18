@@ -21,26 +21,41 @@ namespace Collabco.Myday.Scheduler
 
 
 
+    public enum ModulationType
+    {
+        JobRate,
+        OverallLimit
+    }
+
+
     public struct Modulation  //mods are timeless - they will be applied (in order) as soon as they are serialized into the world of the scheduler
     {
-        public readonly JobKey Key;
+        public readonly ModulationType Type;
         public readonly double Rate;
+        public readonly JobKey Key;
 
         public Modulation(JobKey key, double weight) {
+            Type = ModulationType.JobRate;
             Key = key;
             Rate = weight;
+        }
+
+        public Modulation(double overallLimit) {
+            Type = ModulationType.OverallLimit;
+            Key = default(JobKey);
+            Rate = overallLimit;
         }
     }
 
 
     public struct Optimum
     {
-        public readonly double OverallLimit;
-        public readonly double PerJob;
+        public readonly double OverallRealLimit;
+        public readonly double RealRatePerJob;
 
-        public Optimum(double overallLimit, double perJob) {
-            OverallLimit = overallLimit;
-            PerJob = perJob;
+        public Optimum(double overallRealLimit, double realRatePerJob) {
+            OverallRealLimit = overallRealLimit;
+            RealRatePerJob = realRatePerJob;
         }
     }
 
@@ -94,10 +109,10 @@ namespace Collabco.Myday.Scheduler
 
 
         double ScaleToVirtual(double realPeriod) {
-            var scale = _optimum.PerJob;
+            var scale = _optimum.RealRatePerJob;
 
-            if(scale * _overallRate > _optimum.OverallLimit) {                
-               scale = _optimum.OverallLimit / _overallRate;
+            if(scale * _overallRate > _optimum.OverallRealLimit) {                
+               scale = _optimum.OverallRealLimit / _overallRate;
             }
 
             return scale * realPeriod;
@@ -120,14 +135,22 @@ namespace Collabco.Myday.Scheduler
         }
 
         void ProcessMod(double now, Modulation mod) {
-            var key = mod.Key;
+            switch(mod.Type) {
+                case ModulationType.OverallLimit:
+                    _optimum = new Optimum(mod.Rate, _optimum.RealRatePerJob);
+                    break;
 
-            if(mod.Rate == 0) {
-                ClearJobState(key);
-            }
-            else {
-                var state = GetJobState(key);
-                PlaceJob(now, new JobInfo(key, state), mod.Rate);
+                case ModulationType.JobRate:
+                    var key = mod.Key;
+
+                    if(mod.Rate == 0) {
+                        ClearJobState(key);
+                    }
+                    else {
+                        var state = GetJobState(key);
+                        PlaceJob(now, new JobInfo(key, state), mod.Rate);
+                    }
+                    break;
             }
         }
 

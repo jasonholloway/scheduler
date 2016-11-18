@@ -133,7 +133,10 @@ namespace myday.scheduler.demo
 
 
         public void setOverallLimit(Guid schedulerId, double limit) {
-            //...
+            var holder = _reg.GetScheduler(schedulerId);
+
+            holder.Scheduler.Notify(
+                new Modulation(overallLimit: limit));
         }
         
     }
