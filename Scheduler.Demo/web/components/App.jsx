@@ -12,19 +12,17 @@ d3.time = require('d3-time');
 
 console.log(d3);
 
-
-function newJob$(jobId, ev$, hub) {
-    let counter = 0;
-
-    return ev$.scan((ac, ev) => <h4>{ev.jobId}: {counter++}</h4>, {})
-              .map(x => ({ id:jobId, el:x }));
-}
-
-
 class JobGraph extends React.Component {
 
     componentWillMount() {
         this.elId = 'jobGraph' + this.props.schedId;
+        this.ev$ = this.props.events;
+        
+        this.currEvCount = 0;
+        this.prevEvCount = 0;
+        
+        this.ev$.scan((c, ev) => c + 1, 0)
+                .subscribe(c => this.currEvCount = c);
     }
 
     componentDidMount() {
@@ -37,55 +35,74 @@ class JobGraph extends React.Component {
 
     setup() {
         const el = document.getElementById(this.elId),
-            width = 400,
+            width = 500,
             height = 100,
-            duration = 500,
-            limit = 60;
+            duration = 100,
+            limit = 80;
+
+
+        const plots = [
+            {
+                name: 'precise',
+                colour: 'blue',
+                getValue: () => {                    
+                    let diffEvCount = this.currEvCount - this.prevEvCount;
+                    this.prevEvCount = this.currEvCount;
+                    return diffEvCount * 33;
+                }
+            },
+            {
+                name: 'smooth',
+                colour: 'purple',
+                getValue: () => 50
+            }
+        ];
+
 
         let now = Date.now();
-        let data = d3.range(500).map(_ => 0);
 
-        const x = d3.scaleTime()
-            .domain([now - (limit - 2), now - duration])
+        const xScale = d3.scaleTime()
+            .domain([now - (limit - 2) * duration, now - duration])
             .range([0, width])
 
-        const y = d3.scaleLinear()
+        const yScale = d3.scaleLinear()
             .domain([0, 100])
             .range([height, 0])
 
         const line = d3.line()
                     .curve(d3.curveCatmullRomOpen)
-                    .x((d, i) => x(now - (limit - 1 - i) * duration))            
-                    .y((d) => y(d));
+                    .x((d, i) => xScale(now - (limit - 1 - i) * duration))            
+                    .y(yScale);
 
         const svg = d3.select(el).append('svg')
                     .attr('class', 'chart')
                     .attr('width', width)
-                    .attr('height', height + 50)
+                    .attr('height', height + 10)
 
         const paths = svg.append('g')
 
-        const path = paths.append('path')
-                    .datum(data)
-                    .attr('class', 'path')
-                    .style('stroke', 'blue');
+        plots.forEach(p => {            
+            p.data = d3.range(limit).map(() => 0);
+
+            p.path = paths.append('path')
+                        .datum(p.data)
+                        .attr('class', 'path')
+                        .style('stroke', p.colour)
+                        .style('fill', 'none');
+        });
 
         var tick = () => {
             now = Date.now();
 
-            data.push(20 + Math.random() * 100);
-            path.attr('d', line);
+            plots.forEach(p => {
+                p.data.push(p.getValue());
+                p.data.shift();
 
-            data.shift();
+                p.path.attr('d', line);
+            });
 
             // Shift domain
-
-            var xDomain = [now - (limit - 2) * duration, now - duration];
-            console.log('now', now);
-            console.log('limit', limit);
-            console.log('xDomain', xDomain);
-
-            x.domain(xDomain)
+            xScale.domain([now - (limit - 2) * duration, now - duration])
 
             // Slide x-axis left
             // axis.transition()
@@ -98,34 +115,57 @@ class JobGraph extends React.Component {
                 .transition()           
                 .duration(duration)
                 .ease(d3.easeLinear)
-                .attr('transform', 'translate(' + x(now - (limit - 1) * duration) + ')')
-                .on('end', tick)
-
+                .attr('transform', 'translate(' + xScale(now - (limit - 1) * duration) + ')')
+                .on('end', tick);
         };
 
-        tick(x);
+        tick();
     }
 
 }
 
 
 
-function newScheduler$(schedId, ev$, hub) {
+function newJob$(schedId, jobId, ev$, hub) {
+    let counter = 0;
 
-    const onClick = () => {
-        hub.invoke('addJob', schedId, Guid.raw());
+    const change = (a, b) => {
+        let v = a.target.value - 50;
+        let weight = Math.pow(1.07, v);
+        hub.invoke('updateJob', schedId, jobId, weight);
+    }
+
+    const render = () => {
+        return <div><h4>{jobId}: {counter++}</h4><input type="range" onChange={change}/></div>;
     };
 
+    return ev$.map(x => ({ id:jobId, el:render() }));
+}
+
+
+
+function newScheduler$(schedId, ev$, hub) {
+
+    const addJob = () => {
+        hub.invoke('updateJob', schedId, Guid.raw(), 1);
+    };
+
+    const removeScheduler = () => {
+        hub.invoke('removeScheduler', schedId);
+    }
+
+
     return ev$.groupBy(ev => ev.jobId)
-                .flatMap((group, i) => newJob$(group.key, group, hub))
+                .flatMap((group, i) => newJob$(schedId, group.key, group, hub))
                 .scan((jobs, job) => { jobs.set(job.id, job.el); return jobs; }, new Map())
                 .map(jobs => Array.from(jobs)
                                     .map(([k, v]) => <li key={k}>{v}</li>) )
                 .map(jobEls => ({ 
                                   id: schedId, 
                                   el: <div>
-                                          <JobGraph schedId={schedId}/>
-                                          <button onClick={onClick}>Add Job</button>
+                                          <button onClick={removeScheduler}>Remove Scheduler</button>                                          
+                                          <JobGraph schedId={schedId} events={ev$}/>
+                                          <button onClick={addJob}>Add Job</button>
                                           <ul>{ jobEls }</ul>
                                       </div> 
                               }));
@@ -136,7 +176,7 @@ function newApp$(ev$, hub) {
     const fnClick = () => {
         var schedId = Guid.raw();
         hub.invoke('addScheduler', schedId);
-        hub.invoke('addJob', schedId, Guid.raw());
+        hub.invoke('updateJob', schedId, Guid.raw(), 1);
     };
 
     fnClick();

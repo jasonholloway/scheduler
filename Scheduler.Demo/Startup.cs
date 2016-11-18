@@ -72,7 +72,16 @@ namespace myday.scheduler.demo
 
         }
 
-        public SchedulerHolder GetSchedulerHolder(Guid id)
+        public void RemoveScheduler(Guid id) {
+            SchedulerHolder holder;
+
+            if(_dScheds.TryRemove(id, out holder)) {
+                //...                
+            }
+        }
+
+
+        public SchedulerHolder GetScheduler(Guid id)
             => _dScheds.GetOrAdd(id,
                         i => {
                             var subject = new Subject<JobKey>();
@@ -103,7 +112,7 @@ namespace myday.scheduler.demo
         }
 
         public void addScheduler(Guid schedulerId) {
-            var holder = _reg.GetSchedulerHolder(schedulerId);
+            var holder = _reg.GetScheduler(schedulerId);
 
             holder.Calls.Subscribe(jk => {
                 Clients.All.handle(schedulerId, jk.Id);
@@ -111,21 +120,22 @@ namespace myday.scheduler.demo
         }
         
 
-        public void addJob(Guid schedulerId, Guid jobId) {
-            var holder = _reg.GetSchedulerHolder(schedulerId);
+        public void updateJob(Guid schedulerId, Guid jobId, double weight) {
+            var holder = _reg.GetScheduler(schedulerId);
             
             holder.Scheduler.Notify(
-                new Modulation(new JobKey(jobId), 1D));
+                new Modulation(new JobKey(jobId), weight));
         }
         
+        public void removeScheduler(Guid schedulerId) {
+            _reg.RemoveScheduler(schedulerId);
+        }
+
 
         public void setOverallLimit(Guid schedulerId, double limit) {
             //...
         }
-
-        public void setJobOptimum(Guid schedulerId, Guid jobId, double rate) {
-            //...
-        }
+        
     }
 
 }
