@@ -16,13 +16,7 @@ class JobGraph extends React.Component {
 
     componentWillMount() {
         this.elId = 'jobGraph' + this.props.schedId;
-        this.ev$ = this.props.events;
-        
-        this.currEvCount = 0;
-        this.prevEvCount = 0;
-        
-        this.ev$.scan((c, ev) => c + 1, 0)
-                .subscribe(c => this.currEvCount = c);
+        this.ev$ = this.props.events;        
     }
 
     componentDidMount() {
@@ -33,28 +27,50 @@ class JobGraph extends React.Component {
          return <div id={this.elId}></div>;
     }
 
+
+
+    createPlots() {
+
+    }
+
+
     setup() {
         const el = document.getElementById(this.elId),
-            width = 500,
-            height = 100,
-            duration = 100,
-            limit = 80;
+            width = 600,
+            height = 150,
+            duration = 50,
+            limit = 200;
 
+        let evCount = 0;
+        let increment = 0;        
+        let buffer = d3.range(100).map(_ => 0);
+
+        this.ev$.subscribe(_ => increment++);
 
         const plots = [
             {
                 name: 'precise',
                 colour: 'blue',
-                getValue: () => {                    
-                    let diffEvCount = this.currEvCount - this.prevEvCount;
-                    this.prevEvCount = this.currEvCount;
-                    return diffEvCount * 33;
+                scale: 20,
+                getValue: () => {             
+                    let v = increment;
+
+                    buffer.push(increment);
+                    buffer.shift();
+                    increment = 0;
+
+                    return v;
                 }
             },
             {
                 name: 'smooth',
                 colour: 'purple',
-                getValue: () => 50
+                getValue: () => {
+                    let w = buffer.length;
+                    let c = buffer.reduce((ac, v, x) => ac + (v * (x / w) ));
+                    console.log('overall hz', (c / (buffer.length / 2)) * (1000 / duration) );
+                    return c * 0.15;
+                }
             }
         ];
 
@@ -66,7 +82,7 @@ class JobGraph extends React.Component {
             .range([0, width])
 
         const yScale = d3.scaleLinear()
-            .domain([0, 100])
+            .domain([0, 6])
             .range([height, 0])
 
         const line = d3.line()
@@ -101,22 +117,17 @@ class JobGraph extends React.Component {
                 p.path.attr('d', line);
             });
 
-            // Shift domain
             xScale.domain([now - (limit - 2) * duration, now - duration])
 
-            // Slide x-axis left
-            // axis.transition()
-            //     .duration(duration)
-            //     .ease(d3.easeLinear)
-            //     .call(axis)
-
-            // Slide paths left
             var z = paths.attr('transform', null)
                 .transition()           
                 .duration(duration)
                 .ease(d3.easeLinear)
                 .attr('transform', 'translate(' + xScale(now - (limit - 1) * duration) + ')')
                 .on('end', tick);
+
+            evCount += increment;
+            increment = 0;
         };
 
         tick();
@@ -157,8 +168,8 @@ function newScheduler$(schedId, ev$, hub) {
     let setLimit = (e) => {
         let v = e.target.value - 50;
         let limit = Math.pow(1.05, v) * 3;
-
-        console.log('limit', limit);
+        
+        document.getElementById('hz_out_' + schedId).value = limit + ' Hz';
 
         hub.invoke('setOverallLimit', schedId, limit);
     }
@@ -172,10 +183,15 @@ function newScheduler$(schedId, ev$, hub) {
                 .map(jobEls => ({ 
                                   id: schedId, 
                                   el: <div>
-                                          <button onClick={removeScheduler}>Remove Scheduler</button>      
+                                          <button onClick={removeScheduler}>Remove Scheduler</button>
+
                                           <JobGraph schedId={schedId} events={ev$}/>
-                                          <input type="range" onChange={setLimit}/>
+
+                                          <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
+                                          <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
+
                                           <button onClick={addJob}>Add Job</button>
+
                                           <ul>{ jobEls }</ul>
                                       </div> 
                               }));

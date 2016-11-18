@@ -135,8 +135,8 @@ namespace Collabco.Myday.Scheduler
         }
 
         void ProcessMod(double now, Modulation mod) {
-            switch(mod.Type) {
-                case ModulationType.OverallLimit:
+            switch(mod.Type) {                    /////////////////////////////////////////////////////////////////////////////
+                case ModulationType.OverallLimit: //OVERALL LIMIT MODS MUST BE PROCESSED FIRST FROM MOD QUEUE!!!!!!!!!
                     _optimum = new Optimum(mod.Rate, _optimum.RealRatePerJob);
                     break;
 

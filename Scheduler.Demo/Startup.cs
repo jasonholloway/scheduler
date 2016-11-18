@@ -65,8 +65,8 @@ namespace myday.scheduler.demo
 
             Task.Run(async () => {
                 while(_active) {
-                    await Task.Delay(200);
-                    _dScheds.Values.ForEach(s => s.Scheduler.Progress(0.2));
+                    await Task.Delay(50);
+                    _dScheds.Values.ForEach(s => s.Scheduler.Progress(0.05));
                 }
             });
 
@@ -89,7 +89,7 @@ namespace myday.scheduler.demo
                             var sched = new Scheduler(
                                             rand: new Random(i.GetHashCode()),
                                             handler: k => subject.OnNext(k),
-                                            optimum: new Optimum(10, 2)
+                                            optimum: new Optimum(1, 1)
                                             );
                             
                             return new SchedulerHolder(sched, subject);
