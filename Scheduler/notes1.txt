@@ -1,5 +1,22 @@
 ﻿
 
+TO DO:
+
+progress by timestamp - scheduler itself shouldn't track timestamp, driver should
+add/remove jobs
+one buffer per job
+one graph per job
+
+pauses in execution will make steps huge
+	- there should be deduplication in job queue
+	- also some mechanism of back-pressure: if job queue passes a size limit, overall scheduler should be drastically slowed
+	- AND a maximum step-size limit
+
+****************************************************************************************************
+
+
+
+
             //inst
 
             //we need to know how many jobs we have

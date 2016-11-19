@@ -5,6 +5,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import newApp$ from './components/app.jsx';
 import Rx from 'rxjs';
+import Guid from 'guid';
 
 window.onload = () => {
     const conn = $.hubConnection();
@@ -34,6 +35,8 @@ function run(hub, sub) {
         .subscribe(r => { 
             ReactDOM.render(r, document.getElementById('root')); 
         });
+
+    hub.invoke('subscribeToScheduler', Guid.EMPTY);
 }
 
 

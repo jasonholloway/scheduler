@@ -26,9 +26,12 @@ namespace myday.scheduler.demo
         public static void Configuration(IAppBuilder app) 
         {
             var reg = new SchedulerRegistry();
+            
+            var holder = reg.GetScheduler(Guid.Empty);
+            holder.Scheduler.Notify(new Modulation(new JobKey(Guid.NewGuid()), 1D));
+            
             GlobalHost.DependencyResolver.Register(typeof(SchedulerHub), () => new SchedulerHub(reg));
             
-
             app.UseCors(CorsOptions.AllowAll);
             app.MapSignalR();
             
@@ -61,15 +64,7 @@ namespace myday.scheduler.demo
         
         public SchedulerRegistry() 
         {
-            _dScheds = new ConcurrentDictionary<Guid, SchedulerHolder>();
-
-            Task.Run(async () => {
-                while(_active) {
-                    await Task.Delay(50);
-                    _dScheds.Values.ForEach(s => s.Scheduler.Progress(0.05));
-                }
-            });
-
+            _dScheds = new ConcurrentDictionary<Guid, SchedulerHolder>();            
         }
 
         public void RemoveScheduler(Guid id) {
@@ -91,7 +86,11 @@ namespace myday.scheduler.demo
                                             handler: k => subject.OnNext(k),
                                             optimum: new Optimum(1, 1)
                                             );
-                            
+
+                            var driver = new Driver(sched);
+
+                            driver.Start();
+
                             return new SchedulerHolder(sched, subject);
                         });
         
@@ -109,16 +108,30 @@ namespace myday.scheduler.demo
 
         public SchedulerHub(SchedulerRegistry reg) {
             _reg = reg;
+
+            //_reg.GetScheduler(Guid.Empty).Calls.Subscribe(jk => {
+            //    Clients.All.handle(Guid.Empty, jk.Id);
+            //});
         }
 
-        public void addScheduler(Guid schedulerId) {
-            var holder = _reg.GetScheduler(schedulerId);
+        //public void addScheduler(Guid schedulerId) {
+        //    var holder = _reg.GetScheduler(schedulerId);
+
+        //    holder.Calls.Subscribe(jk => {
+        //        Clients.All.handle(schedulerId, jk.Id);
+        //    });
+        //}
+        
+
+
+        public void subscribeToScheduler(Guid schedId) {
+            var holder = _reg.GetScheduler(schedId);
+            var caller = Clients.Caller;
 
             holder.Calls.Subscribe(jk => {
-                Clients.All.handle(schedulerId, jk.Id);
+                caller.handle(schedId, jk.Id);
             });
         }
-        
 
         public void updateJob(Guid schedulerId, Guid jobId, double weight) {
             var holder = _reg.GetScheduler(schedulerId);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -137,10 +138,14 @@ namespace Collabco.Myday.Scheduler
         void ProcessMod(double now, Modulation mod) {
             switch(mod.Type) {                    /////////////////////////////////////////////////////////////////////////////
                 case ModulationType.OverallLimit: //OVERALL LIMIT MODS MUST BE PROCESSED FIRST FROM MOD QUEUE!!!!!!!!!
+                    Debug.WriteLine($"LimitMod {mod.Rate}");
+
                     _optimum = new Optimum(mod.Rate, _optimum.RealRatePerJob);
                     break;
 
                 case ModulationType.JobRate:
+                    Debug.WriteLine($"JobMod {mod.Key.Id} {mod.Rate}");
+
                     var key = mod.Key;
 
                     if(mod.Rate == 0) {

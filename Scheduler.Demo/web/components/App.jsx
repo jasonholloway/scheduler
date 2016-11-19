@@ -16,21 +16,48 @@ class JobGraph extends React.Component {
 
     componentWillMount() {
         this.elId = 'jobGraph' + this.props.schedId;
+        this.schedId = this.props.schedId;
         this.ev$ = this.props.events;        
     }
 
     componentDidMount() {
+        this.elOverall = document.getElementById('overall_' + this.schedId);
+
         this.setup();
     }
 
     render() {
-         return <div id={this.elId}></div>;
+         return <div>
+                    <div id={this.elId}></div>                    
+                    <section> 
+                        <label htmlFor={'overall_' + this.schedId}>Real overall rate</label>
+                        <output id={'overall_' + this.schedId}>123</output> 
+                    </section>
+                </div>;
     }
 
 
 
     createPlots() {
 
+    }
+
+
+
+    createWindowConvolution(l) {
+        let scaler = Math.pow(2 * Math.PI, 1/3);
+
+        let fnWindow = x => 0.5 * 
+                                ( Math.sin( 
+                                        Math.pow( (x / l) * scaler, 3)  - (Math.PI / 2)) 
+                                        + 1 ); 
+
+        let d = d3.range(l).map(fnWindow);
+
+        // console.assert(d[0].toPrecision(5) === 0);
+        // console.assert(d[l - 1] === 0);
+
+        return d;
     }
 
 
@@ -43,7 +70,9 @@ class JobGraph extends React.Component {
 
         let evCount = 0;
         let increment = 0;        
-        let buffer = d3.range(100).map(_ => 0);
+
+        let buffer = d3.range(300).map(_ => 0);
+        let bufferWindow = this.createWindowConvolution(buffer.length);
 
         this.ev$.subscribe(_ => increment++);
 
@@ -65,11 +94,17 @@ class JobGraph extends React.Component {
             {
                 name: 'smooth',
                 colour: 'purple',
-                getValue: () => {
-                    let w = buffer.length;
-                    let c = buffer.reduce((ac, v, x) => ac + (v * (x / w) ));
-                    console.log('overall hz', (c / (buffer.length / 2)) * (1000 / duration) );
-                    return c * 0.15;
+                getValue: () => {   
+                    let hits = buffer.reduce((a,b) => a+b);
+                    let area = buffer.length * 1;
+
+                    // let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
+                    // let area = wu(bufferWindow).reduce((a,b) => a+b);
+
+                    let hz = (hits / area) * (1000 / duration);
+                    this.elOverall.value = `${hz.toPrecision(3)} Hz`;
+
+                    return hz * 0.2;
                 }
             }
         ];
@@ -144,10 +179,25 @@ function newJob$(schedId, jobId, ev$, hub) {
         let v = a.target.value - 50;
         let weight = Math.pow(1.07, v);
         hub.invoke('updateJob', schedId, jobId, weight);
+
+        document.getElementById(`weight_out_${jobId}`).value = weight.toPrecision(3);
     }
 
     const render = () => {
-        return <div><h4>{jobId}: {counter++}</h4><input type="range" onChange={change}/></div>;
+        return <div>
+                    <h4>{jobId}</h4>
+                    <label htmlFor={`weight_in_${jobId}`}>Weight</label>
+                    <input type="range" onChange={change} id={`weight_in_${jobId}`}/>
+                    <output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
+
+                    <label htmlFor={`job_count_${jobId}`}>Call count</label>
+                    <output id={`job_count_${jobId}`}>{counter++}</output>
+                    
+                    <label htmlFor={`job_rate_${jobId}`}>Real rate</label>
+                    <output id={`job_rate_${jobId}`}>?</output>
+
+
+                </div>;
     };
 
     return ev$.map(x => ({ id:jobId, el:render() }));
@@ -161,15 +211,11 @@ function newScheduler$(schedId, ev$, hub) {
         hub.invoke('updateJob', schedId, Guid.raw(), 1);
     };
 
-    let removeScheduler = () => {
-        hub.invoke('removeScheduler', schedId);
-    }
-
     let setLimit = (e) => {
         let v = e.target.value - 50;
         let limit = Math.pow(1.05, v) * 3;
         
-        document.getElementById('hz_out_' + schedId).value = limit + ' Hz';
+        document.getElementById('hz_out_' + schedId).value = limit.toPrecision(3) + ' Hz';
 
         hub.invoke('setOverallLimit', schedId, limit);
     }
@@ -183,11 +229,10 @@ function newScheduler$(schedId, ev$, hub) {
                 .map(jobEls => ({ 
                                   id: schedId, 
                                   el: <div>
-                                          <button onClick={removeScheduler}>Remove Scheduler</button>
-
                                           <JobGraph schedId={schedId} events={ev$}/>
-
+                                          
                                           <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
+                                          <label htmlFor={'hz_out_' + schedId}>Limit</label>
                                           <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
 
                                           <button onClick={addJob}>Add Job</button>
@@ -198,22 +243,12 @@ function newScheduler$(schedId, ev$, hub) {
 }
 
 function newApp$(ev$, hub) {
-
-    const fnClick = () => {
-        var schedId = Guid.raw();
-        hub.invoke('addScheduler', schedId);
-        hub.invoke('updateJob', schedId, Guid.raw(), 1);
-    };
-
-    fnClick();
-
     return ev$
             .groupBy(ev => ev.schedId)               
             .flatMap((group, i) => newScheduler$(group.key, group, hub))
             .scan((scheds, sched) => { scheds.set(sched.id, sched.el); return scheds; }, new Map())    
             .map(scheds => Array.from(wu(scheds.entries()).map(([k, v]) => <li key={k}>{v}</li>)))
             .map(els => <div>
-                            <button onClick={fnClick}>Add Scheduler</button>
                             <ul>{els}</ul>
                         </div>);
                 
