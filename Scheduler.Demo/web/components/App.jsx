@@ -29,7 +29,7 @@ class JobGraph extends React.Component {
          return <div className="job-graph">
                     <div id={this.elId}></div>                    
                     <div> 
-                        <label htmlFor={'overall_' + this.guid}>Real overall rate</label>
+                        <label htmlFor={'overall_' + this.guid}>Rate</label>
                         <output id={'overall_' + this.guid}>123</output> 
                     </div>
                 </div>;
@@ -190,27 +190,29 @@ function newJob$(schedId, jobId, ev$, hub) {
 
     const render = () => {
         return <div>
-                    <h4>{jobId}</h4>
+		
+					<div className="job-controls">
+					
+						<h4>{jobId}</h4>
 
-                    <button onClick={remove}>Remove</button>
+						<button onClick={remove}>Remove</button>
+						
+						<label htmlFor={`weight_in_${jobId}`}>Weight</label>
+						<input type="range" onChange={change} id={`weight_in_${jobId}`}/>
+						<output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
+						
+					</div>
 
-                    <JobGraph events={ev$}/>
+					<JobGraph events={ev$}/>
 
-                    <label htmlFor={`weight_in_${jobId}`}>Weight</label>
-                    <input type="range" onChange={change} id={`weight_in_${jobId}`}/>
-                    <output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
-
-                    <label htmlFor={`job_count_${jobId}`}>Call count</label>
-                    <output id={`job_count_${jobId}`}>{counter++}</output>
-                    
-                    <label htmlFor={`job_rate_${jobId}`}>Real rate</label>
-                    <output id={`job_rate_${jobId}`}>?</output>
-                    
                 </div>;
     };
 
     return ev$.map(x => ({ id:jobId, el:render() }));
 }
+
+
+
 
 
 
@@ -243,11 +245,13 @@ function newScheduler$(schedId, ev$, hub) {
                                                 <th>
                                                     <JobGraph events={ev$}/>
                                                     
-                                                    <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
-                                                    <label htmlFor={'hz_out_' + schedId}>Limit</label>
-                                                    <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
+                                                    <div className="scheduler-controls">
+                                                        <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
+                                                        <label htmlFor={'hz_out_' + schedId}>Limit</label>
+                                                        <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
 
-                                                    <button onClick={addJob}>Add Job</button>
+                                                        <button onClick={addJob}>Add Job</button>
+                                                    </div>
                                                 </th>
                                             </tr>
                                             { jobEls }
@@ -255,6 +259,9 @@ function newScheduler$(schedId, ev$, hub) {
                                       </div> 
                               }));
 }
+
+
+
 
 function newApp$(ev$, hub) {
     return ev$

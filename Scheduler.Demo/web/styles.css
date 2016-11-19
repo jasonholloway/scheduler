@@ -3,15 +3,58 @@ body {
     font-size:16px;
 }
 
-ul {
-    list-style-type:none;
-    padding: 0;
+.whole-page {
+    width:100%;
+    text-align:center;
 }
 
-li {
-    padding: 0;
+table {
+    margin: 0 auto;
 }
 
-.chart {
+th {
+    font-weight:normal;
+    text-align:left;
+    background-color:antiquewhite;
+}
+
+tr:nth-child(odd) {
+    background-color:aquamarine;
+}
+
+tr:nth-child(even) {
+    background-color:aqua;
+}
+
+.scheduler-controls, .job-controls {
+    display:block;
+    float:left;
+    padding-top:50px;
+    text-align:left;
+}
+
+.job-graph {
+    float:right;
+}
+
+/*
+.job-graph>div {
     display: inline-block;
+}
+*/
+
+.job-graph>div:nth-child(1) {
+    width:600px;
+    float:left;
+}
+
+.job-graph>div:nth-child(2) {
+    width:100px;
+    float:right;
+    margin-top:65px;
+}
+
+.job-count {
+    width:100px;
+    float:right;
 }
