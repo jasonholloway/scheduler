@@ -234,19 +234,24 @@ function newScheduler$(schedId, ev$, hub) {
                 .flatMap((group, i) => newJob$(schedId, group.key, group, hub))
                 .scan((jobs, job) => { jobs.set(job.id, job.el); return jobs; }, new Map())
                 .map(jobs => Array.from(jobs)
-                                    .map(([k, v]) => <li key={k}>{v}</li>) )
+                                    .map(([k, v]) => <tr key={k}><td>{v}</td></tr>) )
                 .map(jobEls => ({ 
                                   id: schedId, 
                                   el: <div>
-                                          <JobGraph events={ev$}/>
-                                          
-                                          <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
-                                          <label htmlFor={'hz_out_' + schedId}>Limit</label>
-                                          <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
+                                          <table>
+                                            <tr>
+                                                <th>
+                                                    <JobGraph events={ev$}/>
+                                                    
+                                                    <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
+                                                    <label htmlFor={'hz_out_' + schedId}>Limit</label>
+                                                    <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
 
-                                          <button onClick={addJob}>Add Job</button>
-
-                                          <ul>{ jobEls }</ul>
+                                                    <button onClick={addJob}>Add Job</button>
+                                                </th>
+                                            </tr>
+                                            { jobEls }
+                                          </table>
                                       </div> 
                               }));
 }
@@ -256,10 +261,8 @@ function newApp$(ev$, hub) {
             .groupBy(ev => ev.schedId)               
             .flatMap((group, i) => newScheduler$(group.key, group, hub))
             .scan((scheds, sched) => { scheds.set(sched.id, sched.el); return scheds; }, new Map())    
-            .map(scheds => Array.from(wu(scheds.entries()).map(([k, v]) => <li key={k}>{v}</li>)))
-            .map(els => <div>
-                            <ul>{els}</ul>
-                        </div>);
+            .map(scheds => Array.from(wu(scheds.entries()).map(([k, v]) => <section key={k}>{v}</section>)))
+            .map(els => <div>{els}</div>);
                 
 }
 
