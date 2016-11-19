@@ -1,17 +1,13 @@
 ﻿using Microsoft.Owin;
 using myday.scheduler.demo;
 using Owin;
-using Microsoft.AspNet.SignalR.Owin;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 using Microsoft.Owin.Cors;
 using Microsoft.AspNet.SignalR;
 using Collabco.Myday.Scheduler;
 using System.Threading.Tasks;
-using Microsoft.Owin.StaticFiles;
-using Microsoft.Owin.FileSystems;
 using System.Collections.Concurrent;
 using System.Reactive.Subjects;
 using System.Reactive.Linq;
@@ -33,13 +29,7 @@ namespace myday.scheduler.demo
             GlobalHost.DependencyResolver.Register(typeof(SchedulerHub), () => new SchedulerHub(reg));
             
             app.UseCors(CorsOptions.AllowAll);
-            app.MapSignalR();
-            
-            //var fileOptions = new FileServerOptions();
-            //fileOptions.FileSystem = new PhysicalFileSystem(@".\web");
-            //fileOptions.StaticFileOptions.ServeUnknownFileTypes = true;
-                        
-            //app.UseFileServer(fileOptions);
+            app.MapSignalR();            
         }
     }
 
@@ -107,23 +97,9 @@ namespace myday.scheduler.demo
         SchedulerRegistry _reg;
 
         public SchedulerHub(SchedulerRegistry reg) {
-            _reg = reg;
-
-            //_reg.GetScheduler(Guid.Empty).Calls.Subscribe(jk => {
-            //    Clients.All.handle(Guid.Empty, jk.Id);
-            //});
+            _reg = reg;            
         }
-
-        //public void addScheduler(Guid schedulerId) {
-        //    var holder = _reg.GetScheduler(schedulerId);
-
-        //    holder.Calls.Subscribe(jk => {
-        //        Clients.All.handle(schedulerId, jk.Id);
-        //    });
-        //}
         
-
-
         public void subscribeToScheduler(Guid schedId) {
             var holder = _reg.GetScheduler(schedId);
             var caller = Clients.Caller;

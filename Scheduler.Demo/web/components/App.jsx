@@ -15,14 +15,13 @@ console.log(d3);
 class JobGraph extends React.Component {
 
     componentWillMount() {
-        this.elId = 'jobGraph' + this.props.schedId;
-        this.schedId = this.props.schedId;
+        this.guid = Guid.raw();
+        this.elId = 'jobGraph' + this.guid;
         this.ev$ = this.props.events;        
     }
 
     componentDidMount() {
-        this.elOverall = document.getElementById('overall_' + this.schedId);
-
+        this.elOverall = document.getElementById('overall_' + this.guid);
         this.setup();
     }
 
@@ -30,8 +29,8 @@ class JobGraph extends React.Component {
          return <div>
                     <div id={this.elId}></div>                    
                     <section> 
-                        <label htmlFor={'overall_' + this.schedId}>Real overall rate</label>
-                        <output id={'overall_' + this.schedId}>123</output> 
+                        <label htmlFor={'overall_' + this.guid}>Real overall rate</label>
+                        <output id={'overall_' + this.guid}>123</output> 
                     </section>
                 </div>;
     }
@@ -54,9 +53,6 @@ class JobGraph extends React.Component {
 
         let d = d3.range(l).map(fnWindow);
 
-        // console.assert(d[0].toPrecision(5) === 0);
-        // console.assert(d[l - 1] === 0);
-
         return d;
     }
 
@@ -71,7 +67,7 @@ class JobGraph extends React.Component {
         let evCount = 0;
         let increment = 0;        
 
-        let buffer = d3.range(300).map(_ => 0);
+        let buffer = d3.range(200).map(_ => 0);
         let bufferWindow = this.createWindowConvolution(buffer.length);
 
         this.ev$.subscribe(_ => increment++);
@@ -95,17 +91,22 @@ class JobGraph extends React.Component {
                 name: 'smooth',
                 colour: 'purple',
                 getValue: () => {   
-                    let hits = buffer.reduce((a,b) => a+b);
-                    let area = buffer.length * 1;
+                    // let hits = buffer.reduce((a,b) => a+b);
+                    // let area = buffer.length * 1;
 
-                    // let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
-                    // let area = wu(bufferWindow).reduce((a,b) => a+b);
+                    let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
+                    let area = wu(bufferWindow).reduce((a,b) => a+b);
 
                     let hz = (hits / area) * (1000 / duration);
                     this.elOverall.value = `${hz.toPrecision(3)} Hz`;
 
                     return hz * 0.2;
                 }
+            },
+            {
+                name: 'ajob',     //each job needs to have its own buffer etc.
+                colour: 'orange',
+                getValue: () => 2.5
             }
         ];
 
@@ -183,9 +184,18 @@ function newJob$(schedId, jobId, ev$, hub) {
         document.getElementById(`weight_out_${jobId}`).value = weight.toPrecision(3);
     }
 
+    const remove = (a, b) => {
+        hub.invoke('updateJob', schedId, jobId, 0);
+    }
+
     const render = () => {
         return <div>
                     <h4>{jobId}</h4>
+
+                    <button onClick={remove}>Remove</button>
+
+                    <JobGraph events={ev$}/>
+
                     <label htmlFor={`weight_in_${jobId}`}>Weight</label>
                     <input type="range" onChange={change} id={`weight_in_${jobId}`}/>
                     <output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
@@ -195,8 +205,7 @@ function newJob$(schedId, jobId, ev$, hub) {
                     
                     <label htmlFor={`job_rate_${jobId}`}>Real rate</label>
                     <output id={`job_rate_${jobId}`}>?</output>
-
-
+                    
                 </div>;
     };
 
@@ -229,7 +238,7 @@ function newScheduler$(schedId, ev$, hub) {
                 .map(jobEls => ({ 
                                   id: schedId, 
                                   el: <div>
-                                          <JobGraph schedId={schedId} events={ev$}/>
+                                          <JobGraph events={ev$}/>
                                           
                                           <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
                                           <label htmlFor={'hz_out_' + schedId}>Limit</label>
