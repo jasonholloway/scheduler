@@ -26,12 +26,12 @@ class JobGraph extends React.Component {
     }
 
     render() {
-         return <div>
+         return <div class="job-graph">
                     <div id={this.elId}></div>                    
-                    <section> 
+                    <div> 
                         <label htmlFor={'overall_' + this.guid}>Real overall rate</label>
                         <output id={'overall_' + this.guid}>123</output> 
-                    </section>
+                    </div>
                 </div>;
     }
 
