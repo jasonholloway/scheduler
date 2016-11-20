@@ -1,47 +1,76 @@
 body {
     font-family: Verdana, sans-serif;
     font-size:16px;
-}
-
-.whole-page {
-    width:100%;
-    text-align:center;
+    box-sizing: border-box;
+    margin: 0;
 }
 
 table {
-    margin: 0 auto;
+    width: 100%;
+}
+
+td {
+    border-left:200px solid white;
+    border-right:200px solid white;
 }
 
 th {
-    font-weight:normal;
+    font-size:20px;
     text-align:left;
-    background-color:antiquewhite;
+    background-color:#fffa7f;
+    border-left:200px solid #fffa7f;
+    border-right:200px solid #fffa7f;
+    border-radius: 5px;
 }
 
 tr:nth-child(odd) {
-    background-color:aquamarine;
+    background-color:#a7fade;
 }
 
 tr:nth-child(even) {
-    background-color:aqua;
+    background-color:#d1fdee;
 }
 
 .scheduler-controls, .job-controls {
     display:block;
     float:left;
-    padding-top:50px;
+    padding:0 10px 0 10px;
     text-align:left;
 }
 
-.job-graph {
-    float:right;
+.weight-controls>input, .weight-controls>label, .weight-controls>button {
+    vertical-align: bottom;
+    margin: 0 3px 0 3px;
 }
 
-/*
-.job-graph>div {
-    display: inline-block;
+.scheduler-controls h3, .job-controls h4 {
+    margin: 3px;
 }
-*/
+
+.job-graph label {
+    margin-right:6px;
+}
+
+.job-graph output {
+    background-color:#ebf4ff;
+    border-radius: 5px;
+    padding: 2px;
+}
+
+th .job-graph output {
+    background-color: white;
+}
+
+.chart {
+    background-color:#ebf4ff;
+    margin-top:10px;
+    margin-bottom:6px;
+    border-radius:5px;
+}
+
+th .chart {
+    background-color:white;
+}
 
 .job-graph>div:nth-child(1) {
     width:600px;
@@ -49,12 +78,44 @@ tr:nth-child(even) {
 }
 
 .job-graph>div:nth-child(2) {
-    width:100px;
+    width:180px;
     float:right;
     margin-top:65px;
+    text-align:right;
+    padding-right:5px;
 }
 
 .job-count {
-    width:100px;
+    width:180px;
     float:right;
+}
+
+input:hover {
+    cursor:pointer;
+}
+
+button {
+    font-family: Verdana, sans-serif;
+    font-weight:bold;
+    font-size:14px;
+    text-shadow: 0 -1px grey;
+    border-radius:5px;
+    border-top:2px solid grey;
+    border-right: 2px solid black;
+    border-bottom: 2px solid black;
+    border-left: 2px solid grey;
+    background-image:linear-gradient(hsla(0, 0%, 100%, 0.48), transparent);
+}
+
+button:hover {
+    cursor: pointer;
+    background-image:linear-gradient(rgba(0, 0, 0, 0.22), transparent);
+}
+
+.scheduler-controls button {
+    background-color: #3ff83f;
+}
+
+.job-controls button {
+    background-color: #ff4b2a;
 }

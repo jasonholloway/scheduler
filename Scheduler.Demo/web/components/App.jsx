@@ -193,17 +193,20 @@ function newJob$(schedId, jobId, ev$, hub) {
 		
 					<div className="job-controls">
 					
-						<h4>{jobId}</h4>
-
-						<button onClick={remove}>Remove</button>
+						<h4>Job No.{jobId}</h4>
 						
-						<label htmlFor={`weight_in_${jobId}`}>Weight</label>
-						<input type="range" onChange={change} id={`weight_in_${jobId}`}/>
-						<output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
+						<div className="weight-controls">
+						
+								<label htmlFor={`weight_in_${jobId}`}>Weight</label>
+								<input type="range" onChange={change} id={`weight_in_${jobId}`}/>
+								<output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
+								<button onClick={remove}>Remove</button>
+							
+							</div>
+						
+						<JobGraph events={ev$}/>
 						
 					</div>
-
-					<JobGraph events={ev$}/>
 
                 </div>;
     };
@@ -241,19 +244,26 @@ function newScheduler$(schedId, ev$, hub) {
                                   id: schedId, 
                                   el: <div>
                                           <table>
-                                            <tr>
-                                                <th>
-                                                    <JobGraph events={ev$}/>
-                                                    
-                                                    <div className="scheduler-controls">
-                                                        <input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
-                                                        <label htmlFor={'hz_out_' + schedId}>Limit</label>
-                                                        <output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
+													<tr>
+												
+														<th>
+		
+															<div className="scheduler-controls">
+																<h3>Overall</h3>
+																
+																<div className="weight-controls">
+																	<label htmlFor={'hz_out_' + schedId}>Limit</label>
+																	<input type="range" onChange={setLimit} id={'hz_in_' + schedId}/>
+																	<output htmlFor={'hz_in_' + schedId} id={'hz_out_' + schedId}></output>
 
-                                                        <button onClick={addJob}>Add Job</button>
-                                                    </div>
-                                                </th>
-                                            </tr>
+																	<button onClick={addJob}>Add Job</button>
+																</div>
+																
+																<JobGraph events={ev$}/>
+																
+															</div>
+														</th>
+													</tr>
                                             { jobEls }
                                           </table>
                                       </div> 
