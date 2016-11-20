@@ -10,14 +10,12 @@ d3.time = require('d3-time');
 // import {time as currTime, scale as currScale, svg as currSvg} from 'd3';
 
 
-console.log(d3);
-
 class JobGraph extends React.Component {
 
     componentWillMount() {
         this.guid = Guid.raw();
-        this.elId = 'jobGraph' + this.guid;
-        this.ev$ = this.props.events;        
+        this.elId = 'jobGraph' + this.guid;  
+        this.spec = this.props.spec;
     }
 
     componentDidMount() {
@@ -36,80 +34,12 @@ class JobGraph extends React.Component {
     }
 
 
-
-    createPlots() {
-
-    }
-
-
-
-    createWindowConvolution(l) {
-        let scaler = Math.pow(2 * Math.PI, 1/3);
-
-        let fnWindow = x => 0.5 * 
-                                ( Math.sin( 
-                                        Math.pow( (x / l) * scaler, 3)  - (Math.PI / 2)) 
-                                        + 1 ); 
-
-        let d = d3.range(l).map(fnWindow);
-
-        return d;
-    }
-
-
     setup() {
         const el = document.getElementById(this.elId),
             width = 600,
-            height = 150,
+            height = this.spec.height,
             duration = 50,
             limit = 200;
-
-        let evCount = 0;
-        let increment = 0;        
-
-        let buffer = d3.range(200).map(_ => 0);
-        let bufferWindow = this.createWindowConvolution(buffer.length);
-
-        this.ev$.subscribe(_ => increment++);
-
-        const plots = [
-            {
-                name: 'precise',
-                colour: 'blue',
-                scale: 20,
-                getValue: () => {             
-                    let v = increment;
-
-                    buffer.push(increment);
-                    buffer.shift();
-                    increment = 0;
-
-                    return v;
-                }
-            },
-            {
-                name: 'smooth',
-                colour: 'purple',
-                getValue: () => {   
-                    // let hits = buffer.reduce((a,b) => a+b);
-                    // let area = buffer.length * 1;
-
-                    let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
-                    let area = wu(bufferWindow).reduce((a,b) => a+b);
-
-                    let hz = (hits / area) * (1000 / duration);
-                    this.elOverall.value = `${hz.toPrecision(3)} Hz`;
-
-                    return hz * 0.2;
-                }
-            },
-            {
-                name: 'ajob',     //each job needs to have its own buffer etc.
-                colour: 'orange',
-                getValue: () => 2.5
-            }
-        ];
-
 
         let now = Date.now();
 
@@ -118,7 +48,7 @@ class JobGraph extends React.Component {
             .range([0, width])
 
         const yScale = d3.scaleLinear()
-            .domain([0, 6])
+            .domain([0, (height / 100) * this.spec.scale])
             .range([height, 0])
 
         const line = d3.line()
@@ -133,21 +63,25 @@ class JobGraph extends React.Component {
 
         const paths = svg.append('g')
 
-        plots.forEach(p => {            
-            p.data = d3.range(limit).map(() => 0);
+        const plots = this.spec.plots.map(p => {            
+            let data = d3.range(limit).map(() => 0);
 
-            p.path = paths.append('path')
-                        .datum(p.data)
+            return {
+                spec: p,
+                data: data,
+                path: paths.append('path')
+                        .datum(data)
                         .attr('class', 'path')
                         .style('stroke', p.colour)
-                        .style('fill', 'none');
+                        .style('fill', 'none')
+            };
         });
 
         var tick = () => {
             now = Date.now();
 
             plots.forEach(p => {
-                p.data.push(p.getValue());
+                p.data.push(p.spec.getValue());
                 p.data.shift();
 
                 p.path.attr('d', line);
@@ -161,9 +95,6 @@ class JobGraph extends React.Component {
                 .ease(d3.easeLinear)
                 .attr('transform', 'translate(' + xScale(now - (limit - 1) * duration) + ')')
                 .on('end', tick);
-
-            evCount += increment;
-            increment = 0;
         };
 
         tick();
@@ -173,8 +104,54 @@ class JobGraph extends React.Component {
 
 
 
-function newJob$(schedId, jobId, ev$, hub) {
-    let counter = 0;
+function newJob$(schedId, jobId, ev$, hub) {    
+    let evCount = 0;
+    let increment = 0;        
+
+    let buffer = d3.range(200).map(_ => 0);
+    let bufferWindow = createWindowConvolution(buffer.length);
+
+    ev$.subscribe(_ => increment++);
+
+    const spec = {
+        height: 80,
+        scale: 3,
+        plots: [
+            {
+                name: 'precise',
+                colour: 'blue',
+                scale: 20,
+                getValue: () => {             
+                    let v = increment;
+                    evCount += increment;
+
+                    buffer.push(increment);
+                    buffer.shift();
+                    increment = 0;
+
+                    return v;
+                }
+            },        
+            {
+                name: 'smooth',
+                colour: 'purple',
+                scale: 5,
+                getValue: () => {   
+                    // let hits = buffer.reduce((a,b) => a+b);
+                    // let area = buffer.length * 1;
+
+                    let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
+                    let area = wu(bufferWindow).reduce((a,b) => a+b);
+
+                    let hz = (hits / area) * (1000 / 50); // 50ms duration
+                    //this.elOverall.value = `${hz.toPrecision(3)} Hz`;
+
+                    return hz * 0.2;
+                }
+            }
+        ]
+    };
+
 
     const change = (a, b) => {
         let v = a.target.value - 50;
@@ -204,7 +181,7 @@ function newJob$(schedId, jobId, ev$, hub) {
 							
 							</div>
 						
-						<JobGraph events={ev$}/>
+						<JobGraph spec={spec}/>
 						
 					</div>
 
@@ -217,6 +194,19 @@ function newJob$(schedId, jobId, ev$, hub) {
 
 
 
+
+function createWindowConvolution(l) {
+    let scaler = Math.pow(2 * Math.PI, 1/3);
+
+    let fnWindow = x => 0.5 * 
+                            ( Math.sin( 
+                                    Math.pow( (x / l) * scaler, 3)  - (Math.PI / 2)) 
+                                    + 1 ); 
+
+    let d = d3.range(l).map(fnWindow);
+
+    return d;
+}
 
 
 function newScheduler$(schedId, ev$, hub) {
@@ -234,6 +224,53 @@ function newScheduler$(schedId, ev$, hub) {
         hub.invoke('setOverallLimit', schedId, limit);
     }
 
+    let evCount = 0;
+    let increment = 0;        
+
+    let buffer = d3.range(200).map(_ => 0);
+    let bufferWindow = createWindowConvolution(buffer.length);
+
+    ev$.subscribe(_ => increment++);
+
+    const spec = {
+        height: 140,
+        scale: 3,
+        plots: [
+            {
+                name: 'precise',
+                colour: 'blue',
+                scale: 20,
+                getValue: () => {             
+                    let v = increment;
+                    evCount += increment;
+
+                    buffer.push(increment);
+                    buffer.shift();
+                    increment = 0;
+
+                    return v;
+                }
+            },        
+            {
+                name: 'smooth',
+                colour: 'purple',
+                scale: 5,
+                getValue: () => {   
+                    // let hits = buffer.reduce((a,b) => a+b);
+                    // let area = buffer.length * 1;
+
+                    let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
+                    let area = wu(bufferWindow).reduce((a,b) => a+b);
+
+                    let hz = (hits / area) * (1000 / 50); // 50ms duration
+                    //this.elOverall.value = `${hz.toPrecision(3)} Hz`;
+
+                    return hz * 0.2;
+                }
+            }
+        ]
+    };
+
 
     return ev$.groupBy(ev => ev.jobId)
                 .flatMap((group, i) => newJob$(schedId, group.key, group, hub))
@@ -244,6 +281,7 @@ function newScheduler$(schedId, ev$, hub) {
                                   id: schedId, 
                                   el: <div>
                                           <table>
+                                                <tbody>
 													<tr>
 												
 														<th>
@@ -259,12 +297,13 @@ function newScheduler$(schedId, ev$, hub) {
 																	<button onClick={addJob}>Add Job</button>
 																</div>
 																
-																<JobGraph events={ev$}/>
+																<JobGraph spec={spec}/>
 																
 															</div>
 														</th>
 													</tr>
-                                            { jobEls }
+                                                { jobEls }
+                                                </tbody>
                                           </table>
                                       </div> 
                               }));
