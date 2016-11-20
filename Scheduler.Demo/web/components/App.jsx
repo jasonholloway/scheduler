@@ -1,107 +1,10 @@
 import React from 'react'
 import Scheduler from './Scheduler.jsx'
+import JobGraph from './JobGraph.jsx'
 import Guid from 'guid'
 import Rx from 'rxjs'
 import wu from 'wu'
 const d3 = require('d3');
-d3.scale = require('d3-scale');
-d3.time = require('d3-time');
-// import * as d3 from 'd3'
-// import {time as currTime, scale as currScale, svg as currSvg} from 'd3';
-
-
-class JobGraph extends React.Component {
-
-    componentWillMount() {
-        this.guid = Guid.raw();
-        this.elId = 'jobGraph' + this.guid;  
-        this.spec = this.props.spec;
-    }
-
-    componentDidMount() {
-        this.elOverall = document.getElementById('overall_' + this.guid);
-        this.setup();
-    }
-
-    render() {
-         return <div className="job-graph">
-                    <div id={this.elId}></div>                    
-                    <div> 
-                        <label htmlFor={'overall_' + this.guid}>Rate</label>
-                        <output id={'overall_' + this.guid}>123</output> 
-                    </div>
-                </div>;
-    }
-
-
-    setup() {
-        const el = document.getElementById(this.elId),
-            width = 600,
-            height = this.spec.height,
-            duration = 50,
-            limit = 200;
-
-        let now = Date.now();
-
-        const xScale = d3.scaleTime()
-            .domain([now - (limit - 2) * duration, now - duration])
-            .range([0, width])
-
-        const yScale = d3.scaleLinear()
-            .domain([0, (height / 100) * this.spec.scale])
-            .range([height, 0])
-
-        const line = d3.line()
-                    .curve(d3.curveCatmullRomOpen)
-                    .x((d, i) => xScale(now - (limit - 1 - i) * duration))            
-                    .y(yScale);
-
-        const svg = d3.select(el).append('svg')
-                    .attr('class', 'chart')
-                    .attr('width', width)
-                    .attr('height', height + 10)
-
-        const paths = svg.append('g')
-
-        const plots = this.spec.plots.map(p => {            
-            let data = d3.range(limit).map(() => 0);
-
-            return {
-                spec: p,
-                data: data,
-                path: paths.append('path')
-                        .datum(data)
-                        .attr('class', 'path')
-                        .style('stroke', p.colour)
-                        .style('fill', 'none')
-            };
-        });
-
-        var tick = () => {
-            now = Date.now();
-
-            plots.forEach(p => {
-                p.data.push(p.spec.getValue());
-                p.data.shift();
-
-                p.path.attr('d', line);
-            });
-
-            xScale.domain([now - (limit - 2) * duration, now - duration])
-
-            var z = paths.attr('transform', null)
-                .transition()           
-                .duration(duration)
-                .ease(d3.easeLinear)
-                .attr('transform', 'translate(' + xScale(now - (limit - 1) * duration) + ')')
-                .on('end', tick);
-        };
-
-        tick();
-    }
-
-}
-
 
 
 function newJob$(schedId, jobId, ev$, hub) {    
@@ -144,7 +47,7 @@ function newJob$(schedId, jobId, ev$, hub) {
                     let area = wu(bufferWindow).reduce((a,b) => a+b);
 
                     let hz = (hits / area) * (1000 / 50); // 50ms duration
-                    //this.elOverall.value = `${hz.toPrecision(3)} Hz`;
+                    document.getElementById(`overall_${jobId}`).value = `${hz.toFixed(2)} Hz`;
 
                     return hz * 0.2;
                 }
@@ -158,7 +61,7 @@ function newJob$(schedId, jobId, ev$, hub) {
         let weight = Math.pow(1.07, v);
         hub.invoke('updateJob', schedId, jobId, weight);
 
-        document.getElementById(`weight_out_${jobId}`).value = weight.toPrecision(3);
+        document.getElementById(`weight_out_${jobId}`).value = weight.toFixed(2);
     }
 
     const remove = (a, b) => {
@@ -166,25 +69,21 @@ function newJob$(schedId, jobId, ev$, hub) {
     }
 
     const render = () => {
-        return <div>
-		
-					<div className="job-controls">
-					
-						<h4>Job No.{jobId}</h4>
-						
-						<div className="weight-controls">
-						
+        return <div>		
+					<div className="job-controls">					
+						<div className="weight-controls">						
 								<label htmlFor={`weight_in_${jobId}`}>Weight</label>
 								<input type="range" onChange={change} id={`weight_in_${jobId}`}/>
 								<output htmlFor={`weight_in_${jobId}`} id={`weight_out_${jobId}`}>1.00</output>
-								<button onClick={remove}>Remove</button>
-							
-							</div>
-						
-						<JobGraph spec={spec}/>
-						
+								<button onClick={remove}>Remove</button>							
+							</div>						
+						<JobGraph spec={spec}/>				
+                                             
+                        <div> 
+                            <label htmlFor={'overall_' + jobId}>Rate</label>
+                            <output id={'overall_' + jobId}>123</output> 
+                        </div>		
 					</div>
-
                 </div>;
     };
 
@@ -219,7 +118,7 @@ function newScheduler$(schedId, ev$, hub) {
         let v = e.target.value - 50;
         let limit = Math.pow(1.05, v) * 3;
         
-        document.getElementById('hz_out_' + schedId).value = limit.toPrecision(3) + ' Hz';
+        document.getElementById('hz_out_' + schedId).value = limit.toFixed(2) + ' Hz';
 
         hub.invoke('setOverallLimit', schedId, limit);
     }
@@ -263,7 +162,8 @@ function newScheduler$(schedId, ev$, hub) {
                     let area = wu(bufferWindow).reduce((a,b) => a+b);
 
                     let hz = (hits / area) * (1000 / 50); // 50ms duration
-                    //this.elOverall.value = `${hz.toPrecision(3)} Hz`;
+
+                    document.getElementById(`overall_${schedId}`).value = `${hz.toFixed(2)} Hz`;
 
                     return hz * 0.2;
                 }
@@ -298,7 +198,12 @@ function newScheduler$(schedId, ev$, hub) {
 																</div>
 																
 																<JobGraph spec={spec}/>
-																
+																                                                        
+                                                                <div> 
+                                                                    <label htmlFor={'overall_' + schedId}>Rate</label>
+                                                                    <output id={'overall_' + schedId}>123</output> 
+                                                                </div>
+
 															</div>
 														</th>
 													</tr>
