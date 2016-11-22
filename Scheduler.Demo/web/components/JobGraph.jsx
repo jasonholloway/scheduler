@@ -73,7 +73,8 @@ class JobGraph extends React.Component {
             now = Date.now();
 
             plots.forEach(p => {
-                p.data.push(p.spec.getValue());
+                let val = p.spec.getValue();
+                p.data.push(val);
                 p.data.shift();
 
                 p.path.attr('d', line);

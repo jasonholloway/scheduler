@@ -8,14 +8,17 @@ const d3 = require('d3');
 
 
 function newJob$(schedId, jobId, ev$, hub) {    
+
     let evCount = 0;
     let increment = 0;        
 
-    let buffer = d3.range(200).map(_ => 0);
+    let buffer = d3.range(100).map(_ => ({val:0, t0: 0, t1: 0}));
     let bufferWindow = createWindowConvolution(buffer.length);
 
     ev$.subscribe(_ => increment++);
 
+    let now = Date.now();
+    let last = 0;
     const spec = {
         height: 80,
         scale: 3,
@@ -24,11 +27,19 @@ function newJob$(schedId, jobId, ev$, hub) {
                 name: 'precise',
                 colour: 'blue',
                 scale: 20,
-                getValue: () => {             
+                getValue: () => {            
                     let v = increment;
                     evCount += increment;
 
-                    buffer.push(increment);
+                    last = now;
+                    now = Date.now();
+
+                    buffer.push({
+                        t0: last,
+                        t1: now,
+                        val: increment
+                    });
+
                     buffer.shift();
                     increment = 0;
 
@@ -39,14 +50,12 @@ function newJob$(schedId, jobId, ev$, hub) {
                 name: 'smooth',
                 colour: 'purple',
                 scale: 5,
-                getValue: () => {   
-                    // let hits = buffer.reduce((a,b) => a+b);
-                    // let area = buffer.length * 1;
+                getValue: () => {                       
+                    //in ms below, convert to secs last
+                    let hits = buffer.reduce((ac, d) => ac + ((d.val / (d.t1 - d.t0)) || 0), 0);
+                    let samples = buffer.length;
+                    let hz = (hits / samples) * 1000;
 
-                    let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
-                    let area = wu(bufferWindow).reduce((a,b) => a+b);
-
-                    let hz = (hits / area) * (1000 / 50); // 50ms duration
                     document.getElementById(`overall_${jobId}`).value = `${hz.toFixed(2)} Hz`;
 
                     return hz * 0.2;
@@ -126,10 +135,13 @@ function newScheduler$(schedId, ev$, hub) {
     let evCount = 0;
     let increment = 0;        
 
-    let buffer = d3.range(200).map(_ => 0);
+    let buffer = d3.range(100).map(_ => ({val:0, t0: 0, t1: 0}));
     let bufferWindow = createWindowConvolution(buffer.length);
 
     ev$.subscribe(_ => increment++);
+
+    let now = Date.now();
+    let last = 0;
 
     const spec = {
         height: 140,
@@ -143,7 +155,15 @@ function newScheduler$(schedId, ev$, hub) {
                     let v = increment;
                     evCount += increment;
 
-                    buffer.push(increment);
+                    last = now;
+                    now = Date.now();
+
+                    buffer.push({
+                        t0: last,
+                        t1: now,
+                        val: increment
+                    });
+
                     buffer.shift();
                     increment = 0;
 
@@ -155,13 +175,19 @@ function newScheduler$(schedId, ev$, hub) {
                 colour: 'purple',
                 scale: 5,
                 getValue: () => {   
-                    // let hits = buffer.reduce((a,b) => a+b);
-                    // let area = buffer.length * 1;
+                    //in ms below, convert to secs last
+                    let hits = buffer.reduce((ac, d) => ac + ((d.val / (d.t1 - d.t0)) || 0), 0);
+                    let samples = buffer.length;
 
-                    let hits = wu.zipWith((a,b) => a*b, buffer, bufferWindow).reduce((a,b) => a+b);
-                    let area = wu(bufferWindow).reduce((a,b) => a+b);
+                    //each sample value should be scaled by the window function
+                    //we'd therefore need to integrate the function
 
-                    let hz = (hits / area) * (1000 / 50); // 50ms duration
+
+
+                    // let hits = wu.zipWith((a,b) => a.val*b, buffer, bufferWindow).reduce((a,b) => a+b);
+                    // let area = wu(bufferWindow).reduce((a,b) => a+b);
+
+                    let hz = (hits / samples) * 1000;
 
                     document.getElementById(`overall_${schedId}`).value = `${hz.toFixed(2)} Hz`;
 
